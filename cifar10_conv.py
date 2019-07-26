@@ -31,14 +31,18 @@ f = 'relu(W_p @ x - W_n @ x)'
 
 ####################################
 
-conv1_weights_p = tf.get_variable("conv1_weights_p", [3,3,3,64],   dtype=tf.float32, constraint=lambda x: tf.clip_by_value(x, 0, np.infty))
-conv1_weights_n = tf.get_variable("conv1_weights_n", [3,3,3,64],   dtype=tf.float32, constraint=lambda x: tf.clip_by_value(x, 0, np.infty))
-conv2_weights_p = tf.get_variable("conv2_weights_p", [3,3,64,96],  dtype=tf.float32, constraint=lambda x: tf.clip_by_value(x, 0, np.infty))
-conv2_weights_n = tf.get_variable("conv2_weights_n", [3,3,64,96],  dtype=tf.float32, constraint=lambda x: tf.clip_by_value(x, 0, np.infty))
-conv3_weights_p = tf.get_variable("conv3_weights_p", [3,3,96,128], dtype=tf.float32, constraint=lambda x: tf.clip_by_value(x, 0, np.infty))
-conv3_weights_n = tf.get_variable("conv3_weights_n", [3,3,96,128], dtype=tf.float32, constraint=lambda x: tf.clip_by_value(x, 0, np.infty))
+f1 = 96
+f2 = 128
+f3 = 256
 
-pred_weights = tf.get_variable("pred_weights", [4*4*128,10], dtype=tf.float32)
+conv1_weights_p = tf.get_variable("conv1_weights_p", [3,3,3, f1],   dtype=tf.float32, constraint=lambda x: tf.clip_by_value(x, 0, np.infty))
+conv1_weights_n = tf.get_variable("conv1_weights_n", [3,3,3, f1],   dtype=tf.float32, constraint=lambda x: tf.clip_by_value(x, 0, np.infty))
+conv2_weights_p = tf.get_variable("conv2_weights_p", [3,3,f1,f2],  dtype=tf.float32, constraint=lambda x: tf.clip_by_value(x, 0, np.infty))
+conv2_weights_n = tf.get_variable("conv2_weights_n", [3,3,f1,f2],  dtype=tf.float32, constraint=lambda x: tf.clip_by_value(x, 0, np.infty))
+conv3_weights_p = tf.get_variable("conv3_weights_p", [3,3,f2,f3], dtype=tf.float32, constraint=lambda x: tf.clip_by_value(x, 0, np.infty))
+conv3_weights_n = tf.get_variable("conv3_weights_n", [3,3,f2,f3], dtype=tf.float32, constraint=lambda x: tf.clip_by_value(x, 0, np.infty))
+
+pred_weights = tf.get_variable("pred_weights", [4*4*f3,10], dtype=tf.float32)
 pred_bias = tf.get_variable("pred_bias", [10], dtype=tf.float32)
 
 ####################################
@@ -115,7 +119,7 @@ elif f == 'max(relu(W_p @ x), relu(W_n @ x))':
 
 ####################################
 
-pred_view = tf.reshape(conv3_pool, [-1, 4*4*128])
+pred_view = tf.reshape(conv3_pool, [-1, 4*4*f3])
 pred = tf.matmul(pred_view, pred_weights) + pred_bias
 
 ####################################
