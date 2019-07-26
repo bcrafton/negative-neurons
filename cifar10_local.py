@@ -22,7 +22,7 @@ y = tf.placeholder(tf.float32, [None, 10])
 
 ####################################
 
-# f = 'relu(W_p @ x - W_n @ x)'
+f = 'relu(W_p @ x - W_n @ x)'
 # f = 'relu(W_p @ x) - relu(W_n @ x)'
 # f = 'relu(W_p @ x - relu(W_n @ x))'
 # f = 'max(relu(W_p @ x), relu(W_n @ x))'
@@ -53,23 +53,56 @@ pred_bias = tf.get_variable("pred_bias", [10], dtype=tf.float32)
 
 ####################################
 
-def local_block(x, wp, wn, bp, bn):
+def local_op(x, w):
     patches = tf.image.extract_image_patches(images=x, ksizes=[1,3,3,1], strides=[1,1,1,1], padding='SAME', rates=[1,1,1,1])
     patches = tf.transpose(patches, [1, 2, 0, 3])
-
-    localp  = tf.keras.backend.batch_dot(patches, wp)
-    localp  = tf.transpose(localp, [2, 0, 1, 3])
-    localp  = localp + bp
-
-    localn  = tf.keras.backend.batch_dot(patches, wn)
-    localn  = tf.transpose(localn, [2, 0, 1, 3])
-    localn  = localn + bn
-
-    local   = localp - localn
-    act     = tf.nn.relu(local)
     
-    return act
+    local   = tf.keras.backend.batch_dot(patches, w)
+    local   = tf.transpose(local, [2, 0, 1, 3])
+    
+    return local
 
+####################################
+
+if f == 'relu(W_p @ x - W_n @ x)':
+    def local_block(x, wp, wn, bp, bn):
+        localp = local_op(x, wp) + bp
+        localn = local_op(x, wn) + bn
+        local  = tf.nn.relu(localp - localn)
+        return local
+
+elif f == 'relu(W_p @ x) - relu(W_n @ x)':
+    def local_block(x, wp, wn, bp, bn):
+        localp = local_op(x, wp) + bp
+        localn = local_op(x, wn) + bn
+        local  = tf.nn.relu(localp) - tf.nn.relu(localn)
+        return local
+
+elif f == 'relu(W_p @ x - relu(W_n @ x))':
+    def local_block(x, wp, wn, bp, bn):
+        localp = local_op(x, wp) + bp
+        localn = local_op(x, wn) + bn
+        local  = tf.nn.relu(localp - tf.nn.relu(localn))
+        return local
+
+elif f == 'max(relu(W_p @ x), relu(W_n @ x))':
+    def local_block(x, wp, wn, bp, bn):
+        localp = tf.nn.relu(local_op(x, wp) + bp)
+        localn = tf.nn.relu(local_op(x, wn) + bn)
+
+        compp = tf.cast(tf.greater(localp, localn), dtype=tf.float32) * localp
+        compn = tf.cast(tf.greater(localn, localp), dtype=tf.float32) * localn
+        
+        local  = compp - compn
+        return local
+
+elif f == 'y = relu(W_p @ x); y - relu(W_n @ y)':
+    def local_block(x, wp, wn, bp, bn):
+        localp = tf.nn.relu(local_op(x,      wp) + bp)
+        localn = tf.nn.relu(local_op(localp, wn) + bn)
+        local  = localp - localn
+        return local
+        
 ####################################
 
 local1 = local_block(x=x, wp=local1_weights_p, wn=local1_weights_n, bp=conv1_bias_p, bn=conv1_bias_n)

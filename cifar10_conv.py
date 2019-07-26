@@ -22,11 +22,11 @@ y = tf.placeholder(tf.float32, [None, 10])
 
 ####################################
 
-# f = 'relu(W_p @ x - W_n @ x)'
+f = 'relu(W_p @ x - W_n @ x)'
 # f = 'relu(W_p @ x) - relu(W_n @ x)'
 # f = 'relu(W_p @ x - relu(W_n @ x))'
 # f = 'max(relu(W_p @ x), relu(W_n @ x))'
-f = 'y = relu(W_p @ x); y - relu(W_n @ y)'
+# f = 'y = relu(W_p @ x); y - relu(W_n @ y)'
 
 ####################################
 
@@ -54,94 +54,58 @@ pred_bias = tf.get_variable("pred_bias", [10], dtype=tf.float32)
 ####################################
 
 if f == 'relu(W_p @ x - W_n @ x)':
-    conv1p     = tf.nn.conv2d(x, conv1_weights_p, [1,1,1,1], 'SAME') + conv1_bias_p
-    conv1n     = tf.nn.conv2d(x, conv1_weights_n, [1,1,1,1], 'SAME') + conv1_bias_n
-    conv1      = tf.nn.relu(conv1p - conv1n)
-    conv1_pool = tf.nn.avg_pool(conv1, ksize=[1,2,2,1], strides=[1,2,2,1], padding='SAME')
-
-    conv2p     = tf.nn.conv2d(conv1_pool, conv2_weights_p, [1,1,1,1], 'SAME') + conv2_bias_p
-    conv2n     = tf.nn.conv2d(conv1_pool, conv2_weights_n, [1,1,1,1], 'SAME') + conv2_bias_n
-    conv2      = tf.nn.relu(conv2p - conv2n)
-    conv2_pool = tf.nn.avg_pool(conv2, ksize=[1,2,2,1], strides=[1,2,2,1], padding='SAME')
-
-    conv3p     = tf.nn.conv2d(conv2_pool, conv3_weights_p, [1,1,1,1], 'SAME') + conv3_bias_p
-    conv3n     = tf.nn.conv2d(conv2_pool, conv3_weights_n, [1,1,1,1], 'SAME') + conv3_bias_n
-    conv3      = tf.nn.relu(conv3p - conv3n)
-    conv3_pool = tf.nn.avg_pool(conv3, ksize=[1,2,2,1], strides=[1,2,2,1], padding='SAME')
+    def conv_block(x, wp, wn, bp, bn):
+        convp = tf.nn.conv2d(x, wp, [1,1,1,1], 'SAME') + bp
+        convn = tf.nn.conv2d(x, wn, [1,1,1,1], 'SAME') + bn
+        conv  = tf.nn.relu(convp - convn)
+        return conv
 
 elif f == 'relu(W_p @ x) - relu(W_n @ x)':
-    conv1p     = tf.nn.conv2d(x, conv1_weights_p, [1,1,1,1], 'SAME') + conv1_bias_p
-    conv1n     = tf.nn.conv2d(x, conv1_weights_n, [1,1,1,1], 'SAME') + conv1_bias_n
-    conv1      = tf.nn.relu(conv1p) - tf.nn.relu(conv1n)
-    conv1_pool = tf.nn.avg_pool(conv1, ksize=[1,2,2,1], strides=[1,2,2,1], padding='SAME')
-
-    conv2p     = tf.nn.conv2d(conv1_pool, conv2_weights_p, [1,1,1,1], 'SAME') + conv2_bias_p
-    conv2n     = tf.nn.conv2d(conv1_pool, conv2_weights_n, [1,1,1,1], 'SAME') + conv2_bias_n
-    conv2      = tf.nn.relu(conv2p) - tf.nn.relu(conv2n)
-    conv2_pool = tf.nn.avg_pool(conv2, ksize=[1,2,2,1], strides=[1,2,2,1], padding='SAME')
-
-    conv3p     = tf.nn.conv2d(conv2_pool, conv3_weights_p, [1,1,1,1], 'SAME') + conv3_bias_p
-    conv3n     = tf.nn.conv2d(conv2_pool, conv3_weights_n, [1,1,1,1], 'SAME') + conv3_bias_n
-    conv3      = tf.nn.relu(conv3p) - tf.nn.relu(conv3n)
-    conv3_pool = tf.nn.avg_pool(conv3, ksize=[1,2,2,1], strides=[1,2,2,1], padding='SAME')
+    def conv_block(x, wp, wn, bp, bn):
+        convp = tf.nn.conv2d(x, wp, [1,1,1,1], 'SAME') + bp
+        convn = tf.nn.conv2d(x, wn, [1,1,1,1], 'SAME') + bn
+        conv  = tf.nn.relu(convp) - tf.nn.relu(convn)
+        return conv
 
 elif f == 'relu(W_p @ x - relu(W_n @ x))':
-    conv1p     = tf.nn.conv2d(x, conv1_weights_p, [1,1,1,1], 'SAME') + conv1_bias_p
-    conv1n     = tf.nn.conv2d(x, conv1_weights_n, [1,1,1,1], 'SAME') + conv1_bias_n
-    conv1      = tf.nn.relu(conv1p - tf.nn.relu(conv1n)) 
-    conv1_pool = tf.nn.avg_pool(conv1, ksize=[1,2,2,1], strides=[1,2,2,1], padding='SAME')
+    def conv_block(x, wp, wn, bp, bn):
+        convp = tf.nn.conv2d(x, wp, [1,1,1,1], 'SAME') + bp
+        convn = tf.nn.conv2d(x, wn, [1,1,1,1], 'SAME') + bn
+        conv  = tf.nn.relu(convp - tf.nn.relu(convn))
+        return conv
 
-    conv2p     = tf.nn.conv2d(conv1_pool, conv2_weights_p, [1,1,1,1], 'SAME') + conv2_bias_p
-    conv2n     = tf.nn.conv2d(conv1_pool, conv2_weights_n, [1,1,1,1], 'SAME') + conv2_bias_n
-    conv2      = tf.nn.relu(conv2p - tf.nn.relu(conv2n))
-    conv2_pool = tf.nn.avg_pool(conv2, ksize=[1,2,2,1], strides=[1,2,2,1], padding='SAME')
-
-    conv3p     = tf.nn.conv2d(conv2_pool, conv3_weights_p, [1,1,1,1], 'SAME') + conv3_bias_p
-    conv3n     = tf.nn.conv2d(conv2_pool, conv3_weights_n, [1,1,1,1], 'SAME') + conv3_bias_n
-    conv3      = tf.nn.relu(conv3p - tf.nn.relu(conv3n))
-    conv3_pool = tf.nn.avg_pool(conv3, ksize=[1,2,2,1], strides=[1,2,2,1], padding='SAME')
-  
 elif f == 'max(relu(W_p @ x), relu(W_n @ x))':
-    conv1p     = tf.nn.relu(tf.nn.conv2d(x, conv1_weights_p, [1,1,1,1], 'SAME') + conv1_bias_p)
-    conv1n     = tf.nn.relu(tf.nn.conv2d(x, conv1_weights_n, [1,1,1,1], 'SAME') + conv1_bias_n)
-    comp1p     = tf.cast(tf.greater(conv1p, conv1n), dtype=tf.float32) * conv1p
-    comp1n     = tf.cast(tf.greater(conv1n, conv1p), dtype=tf.float32) * conv1n
-    conv1      = comp1p - comp1n
-    conv1_pool = tf.nn.avg_pool(conv1, ksize=[1,2,2,1], strides=[1,2,2,1], padding='SAME')
-
-    conv2p     = tf.nn.relu(tf.nn.conv2d(conv1_pool, conv2_weights_p, [1,1,1,1], 'SAME') + conv2_bias_p)
-    conv2n     = tf.nn.relu(tf.nn.conv2d(conv1_pool, conv2_weights_n, [1,1,1,1], 'SAME') + conv2_bias_n)
-    comp2p     = tf.cast(tf.greater(conv2p, conv2n), dtype=tf.float32) * conv2p
-    comp2n     = tf.cast(tf.greater(conv2n, conv2p), dtype=tf.float32) * conv2n
-    conv2      = comp2p - comp2n
-    conv2_pool = tf.nn.avg_pool(conv2, ksize=[1,2,2,1], strides=[1,2,2,1], padding='SAME')
-
-    conv3p     = tf.nn.relu(tf.nn.conv2d(conv2_pool, conv3_weights_p, [1,1,1,1], 'SAME') + conv3_bias_p)
-    conv3n     = tf.nn.relu(tf.nn.conv2d(conv2_pool, conv3_weights_n, [1,1,1,1], 'SAME') + conv3_bias_n)
-    comp3p     = tf.cast(tf.greater(conv3p, conv3n), dtype=tf.float32) * conv3p 
-    comp3n     = tf.cast(tf.greater(conv3n, conv3p), dtype=tf.float32) * conv3n
-    conv3      = comp3p - comp3n
-    conv3_pool = tf.nn.avg_pool(conv3, ksize=[1,2,2,1], strides=[1,2,2,1], padding='SAME')
+    def conv_block(x, wp, wn, bp, bn):
+        convp  = tf.nn.relu(tf.nn.conv2d(x, wp, [1,1,1,1], 'SAME') + bp)
+        convn  = tf.nn.relu(tf.nn.conv2d(x, wn, [1,1,1,1], 'SAME') + bn)
+        
+        compp = tf.cast(tf.greater(convp, convn), dtype=tf.float32) * convp
+        compn = tf.cast(tf.greater(convn, convp), dtype=tf.float32) * convn
+        
+        conv  = compp - compn
+        return conv
 
 elif f == 'y = relu(W_p @ x); y - relu(W_n @ y)':
-    conv1p     = tf.nn.relu(tf.nn.conv2d(x,          conv1_weights_p, [1,1,1,1], 'SAME') + conv1_bias_p)
-    conv1n     = tf.nn.relu(tf.nn.conv2d(conv1p,     conv1_weights_n, [1,1,1,1], 'SAME') + conv1_bias_n)
-    conv1      = conv1p - conv1n
-    conv1_pool = tf.nn.avg_pool(conv1, ksize=[1,2,2,1], strides=[1,2,2,1], padding='SAME')
-
-    conv2p     = tf.nn.relu(tf.nn.conv2d(conv1_pool, conv2_weights_p, [1,1,1,1], 'SAME') + conv2_bias_p)
-    conv2n     = tf.nn.relu(tf.nn.conv2d(conv2p,     conv2_weights_n, [1,1,1,1], 'SAME') + conv2_bias_n)
-    conv2      = conv2p - conv2n
-    conv2_pool = tf.nn.avg_pool(conv2, ksize=[1,2,2,1], strides=[1,2,2,1], padding='SAME')
-
-    conv3p     = tf.nn.relu(tf.nn.conv2d(conv2_pool, conv3_weights_p, [1,1,1,1], 'SAME') + conv3_bias_p)
-    conv3n     = tf.nn.relu(tf.nn.conv2d(conv3p,     conv3_weights_n, [1,1,1,1], 'SAME') + conv3_bias_n)
-    conv3      = conv3p - conv3n
-    conv3_pool = tf.nn.avg_pool(conv3, ksize=[1,2,2,1], strides=[1,2,2,1], padding='SAME')
+    def conv_block(x, wp, wn, bp, bn):
+        convp = tf.nn.relu(tf.nn.conv2d(x,     wp, [1,1,1,1], 'SAME') + bp)
+        convn = tf.nn.relu(tf.nn.conv2d(convp, wn, [1,1,1,1], 'SAME') + bn)
+        conv  = convp - convn
+        return conv
 
 ####################################
 
-pred_view = tf.reshape(conv3_pool, [-1, 4*4*f3])
+conv1 = conv_block(x=x, wp=conv1_weights_p, wn=conv1_weights_n, bp=conv1_bias_p, bn=conv1_bias_n)
+pool1 = tf.nn.avg_pool(conv1, ksize=[1,2,2,1], strides=[1,2,2,1], padding='SAME')
+
+conv2 = conv_block(x=pool1, wp=conv2_weights_p, wn=conv2_weights_n, bp=conv2_bias_p, bn=conv2_bias_n)
+pool2 = tf.nn.avg_pool(conv2, ksize=[1,2,2,1], strides=[1,2,2,1], padding='SAME')
+
+conv3 = conv_block(x=pool2, wp=conv3_weights_p, wn=conv3_weights_n, bp=conv3_bias_p, bn=conv3_bias_n)
+pool3 = tf.nn.avg_pool(conv3, ksize=[1,2,2,1], strides=[1,2,2,1], padding='SAME')
+
+####################################
+
+pred_view = tf.reshape(pool3, [-1, 4*4*f3])
 pred = tf.matmul(pred_view, pred_weights) + pred_bias
 
 ####################################
