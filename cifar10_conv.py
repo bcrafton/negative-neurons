@@ -24,9 +24,9 @@ y = tf.placeholder(tf.float32, [None, 10])
 
 ####################################
 
-# f = 'relu(W_p @ x - W_n @ x)'
+f = 'relu(W_p @ x - W_n @ x)'
 # f = 'relu(W_p @ x) - relu(W_n @ x)'
-f = 'relu(W_p @ x - relu(W_n @ x))'
+# f = 'relu(W_p @ x - relu(W_n @ x))'
 # f = 'max(relu(W_p @ x), relu(W_n @ x))'
 
 ####################################
@@ -46,17 +46,17 @@ pred_bias = tf.get_variable("pred_bias", [10], dtype=tf.float32)
 if f == 'relu(W_p @ x - W_n @ x)':
     conv1p     = tf.nn.conv2d(x, conv1_weights_p, [1,1,1,1], 'SAME')
     conv1n     = tf.nn.conv2d(x, conv1_weights_n, [1,1,1,1], 'SAME')
-    conv1      = tf.nn.sigmoid(conv1p - conv1n)
+    conv1      = tf.nn.relu(conv1p - conv1n)
     conv1_pool = tf.nn.avg_pool(conv1, ksize=[1,2,2,1], strides=[1,2,2,1], padding='SAME')
 
     conv2p     = tf.nn.conv2d(conv1_pool, conv2_weights_p, [1,1,1,1], 'SAME')
     conv2n     = tf.nn.conv2d(conv1_pool, conv2_weights_n, [1,1,1,1], 'SAME')
-    conv2      = tf.nn.sigmoid(conv2p - conv2n)
+    conv2      = tf.nn.relu(conv2p - conv2n)
     conv2_pool = tf.nn.avg_pool(conv2, ksize=[1,2,2,1], strides=[1,2,2,1], padding='SAME')
 
     conv3p     = tf.nn.conv2d(conv2_pool, conv3_weights_p, [1,1,1,1], 'SAME')
     conv3n     = tf.nn.conv2d(conv2_pool, conv3_weights_n, [1,1,1,1], 'SAME')
-    conv3      = tf.nn.sigmoid(conv3p - conv3n)
+    conv3      = tf.nn.relu(conv3p - conv3n)
     conv3_pool = tf.nn.avg_pool(conv3, ksize=[1,2,2,1], strides=[1,2,2,1], padding='SAME')
 
 elif f == 'relu(W_p @ x) - relu(W_n @ x)':
@@ -92,22 +92,22 @@ elif f == 'relu(W_p @ x - relu(W_n @ x))':
     conv3_pool = tf.nn.avg_pool(conv3, ksize=[1,2,2,1], strides=[1,2,2,1], padding='SAME')
   
 elif f == 'max(relu(W_p @ x), relu(W_n @ x))':
-    conv1p     = tf.nn.sigmoid(tf.nn.conv2d(x, conv1_weights_p, [1,1,1,1], 'SAME'))
-    conv1n     = tf.nn.sigmoid(tf.nn.conv2d(x, conv1_weights_n, [1,1,1,1], 'SAME'))
+    conv1p     = tf.nn.relu(tf.nn.conv2d(x, conv1_weights_p, [1,1,1,1], 'SAME'))
+    conv1n     = tf.nn.relu(tf.nn.conv2d(x, conv1_weights_n, [1,1,1,1], 'SAME'))
     comp1p     = tf.cast(tf.greater(conv1p, conv1n), dtype=tf.float32) * conv1p
     comp1n     = tf.cast(tf.greater(conv1n, conv1p), dtype=tf.float32) * conv1n
     conv1      = comp1p - comp1n
     conv1_pool = tf.nn.avg_pool(conv1, ksize=[1,2,2,1], strides=[1,2,2,1], padding='SAME')
 
-    conv2p     = tf.nn.sigmoid(tf.nn.conv2d(conv1_pool, conv2_weights_p, [1,1,1,1], 'SAME'))
-    conv2n     = tf.nn.sigmoid(tf.nn.conv2d(conv1_pool, conv2_weights_n, [1,1,1,1], 'SAME'))
+    conv2p     = tf.nn.relu(tf.nn.conv2d(conv1_pool, conv2_weights_p, [1,1,1,1], 'SAME'))
+    conv2n     = tf.nn.relu(tf.nn.conv2d(conv1_pool, conv2_weights_n, [1,1,1,1], 'SAME'))
     comp2p     = tf.cast(tf.greater(conv2p, conv2n), dtype=tf.float32) * conv2p
     comp2n     = tf.cast(tf.greater(conv2n, conv2p), dtype=tf.float32) * conv2n
     conv2      = comp2p - comp2n
     conv2_pool = tf.nn.avg_pool(conv2, ksize=[1,2,2,1], strides=[1,2,2,1], padding='SAME')
 
-    conv3p     = tf.nn.sigmoid(tf.nn.conv2d(conv2_pool, conv3_weights_p, [1,1,1,1], 'SAME'))
-    conv3n     = tf.nn.sigmoid(tf.nn.conv2d(conv2_pool, conv3_weights_n, [1,1,1,1], 'SAME'))
+    conv3p     = tf.nn.relu(tf.nn.conv2d(conv2_pool, conv3_weights_p, [1,1,1,1], 'SAME'))
+    conv3n     = tf.nn.relu(tf.nn.conv2d(conv2_pool, conv3_weights_n, [1,1,1,1], 'SAME'))
     comp3p     = tf.cast(tf.greater(conv3p, conv3n), dtype=tf.float32) * conv3p 
     comp3n     = tf.cast(tf.greater(conv3n, conv3p), dtype=tf.float32) * conv3n
     conv3      = comp3p - comp3n
