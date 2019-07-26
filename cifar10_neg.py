@@ -60,12 +60,23 @@ if op == 'conv':
     b3n = tf.Variable(tf.zeros(shape=f3))
 
 if op == 'local':
-    w1p = tf.get_variable("w1p", [32,32,3*3*3, f1], dtype=tf.float32, constraint=lambda x: tf.clip_by_value(x, 0, np.infty))
-    w1n = tf.get_variable("w1n", [32,32,3*3*3, f1], dtype=tf.float32, constraint=lambda x: tf.clip_by_value(x, 0, np.infty))
-    w2p = tf.get_variable("w2p", [16,16,3*3*f1,f2], dtype=tf.float32, constraint=lambda x: tf.clip_by_value(x, 0, np.infty))
-    w2n = tf.get_variable("w2n", [16,16,3*3*f1,f2], dtype=tf.float32, constraint=lambda x: tf.clip_by_value(x, 0, np.infty))
-    w3p = tf.get_variable("w3p", [8, 8, 3*3*f2,f3], dtype=tf.float32, constraint=lambda x: tf.clip_by_value(x, 0, np.infty))
-    w3n = tf.get_variable("w3n", [8, 8, 3*3*f2,f3], dtype=tf.float32, constraint=lambda x: tf.clip_by_value(x, 0, np.infty))
+    limit = np.sqrt(6. / (3.*3.*3. + 3.*3.*f1))
+    w1p_init = np.random.uniform(low=-limit, high=limit, size=(32, 32, 3*3*3, f1))
+    w1n_init = np.random.uniform(low=-limit, high=limit, size=(32, 32, 3*3*3, f1))
+    w1p = tf.Variable(w1p_init, dtype=tf.float32, constraint=lambda x: tf.clip_by_value(x, 0, np.infty))
+    w1n = tf.Variable(w1n_init, dtype=tf.float32, constraint=lambda x: tf.clip_by_value(x, 0, np.infty))
+
+    limit = np.sqrt(6. / (3.*3.*f1 + 3.*3.*f2))
+    w2p_init = np.random.uniform(low=-limit, high=limit, size=(16, 16, 3*3*f1, f2))
+    w2n_init = np.random.uniform(low=-limit, high=limit, size=(16, 16, 3*3*f1, f2))
+    w2p = tf.Variable(w2p_init, dtype=tf.float32, constraint=lambda x: tf.clip_by_value(x, 0, np.infty))
+    w2n = tf.Variable(w2n_init, dtype=tf.float32, constraint=lambda x: tf.clip_by_value(x, 0, np.infty))
+
+    limit = np.sqrt(6. / (3.*3.*f2 + 3.*3.*f3))
+    w3p_init = np.random.uniform(low=-limit, high=limit, size=(8, 8, 3*3*f2, f3))
+    w3n_init = np.random.uniform(low=-limit, high=limit, size=(8, 8, 3*3*f2, f3))
+    w3p = tf.Variable(w3p_init, dtype=tf.float32, constraint=lambda x: tf.clip_by_value(x, 0, np.infty))
+    w3n = tf.Variable(w3n_init, dtype=tf.float32, constraint=lambda x: tf.clip_by_value(x, 0, np.infty))
 
     b1p = tf.Variable(tf.zeros(shape=[32,32,f1]))
     b1n = tf.Variable(tf.zeros(shape=[32,32,f1]))
