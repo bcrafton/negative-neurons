@@ -6,9 +6,10 @@ import sys
 ##############################################
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--epochs', type=int, default=100)
-parser.add_argument('--batch_size', type=int, default=64)
-parser.add_argument('--alpha', type=float, default=1e-2)
+parser.add_argument('--epochs', type=int, default=250)
+parser.add_argument('--batch_size', type=int, default=25)
+parser.add_argument('--gpu', type=int, default=0)
+parser.add_argument('--lr', type=float, default=1e-2)
 parser.add_argument('--eps', type=float, default=1e-4)
 args = parser.parse_args()
 
