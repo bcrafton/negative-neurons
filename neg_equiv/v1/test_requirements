@@ -1,0 +1,23 @@
+
+need to give a case where neg neurons behave same way.
+
+so u cannot show this with 1 layer obviously
+
+how could they ever seem the same if one outputs + other +/-.
+
+we need to create a case where its possile. 
+
+=====
+
+let x = only be positive
+
+relu  f1 x             -> +
+relu f1p x - relu f1n x -> +/-
+
+      f2 x 
+      f2 x ... where f2 only posiive ? 
+      
+=====
+
+if we can train the p/n neurons to do same thing as p/n weights then we can get weights that work
+whch means we can train it and make it happen.
