@@ -43,19 +43,31 @@ lr = tf.placeholder(tf.float32, ())
 ####################################
 
 w = np.load('cifar10_weights.npy', allow_pickle=True).item()
-tconv1_weights = w['conv1_weights']
-tconv2_weights = w['conv2_weights']
-tconv3_weights = w['conv3_weights']
+ref_w1_init = w['conv1_weights']
+ref_w2_init = w['conv2_weights']
+ref_w3_init = w['conv3_weights']
 
-tw1 = tf.Variable(tconv1_weights, dtype=tf.float32)
-tw2 = tf.Variable(tconv2_weights, dtype=tf.float32)
-tw3 = tf.Variable(tconv3_weights, dtype=tf.float32)
+ref_w1 = tf.Variable(ref_w1_init, dtype=tf.float32)
+ref_w2 = tf.Variable(ref_w2_init, dtype=tf.float32)
+ref_w3 = tf.Variable(ref_w3_init, dtype=tf.float32)
 
-w1p_init = np.random.normal(loc=np.average(tconv1_weights), scale=np.std(tconv1_weights), size=np.shape(tconv1_weights))
-w1n_init = np.random.normal(loc=np.average(tconv1_weights), scale=np.std(tconv1_weights), size=np.shape(tconv1_weights))
-w2p_init = np.random.normal(loc=np.average(tconv2_weights), scale=np.std(tconv2_weights), size=np.shape(tconv2_weights))
-w2n_init = np.random.normal(loc=np.average(tconv2_weights), scale=np.std(tconv2_weights), size=np.shape(tconv2_weights))
-w3_init = np.random.normal(loc=np.average(tconv3_weights), scale=np.std(tconv3_weights), size=np.shape(tconv3_weights))
+####################################
+
+ctrl_w1_init = np.random.normal(loc=np.average(ref_w1_init), scale=np.std(ref_w1_init), size=np.shape(ref_w1_init))
+ctrl_w2_init = np.random.normal(loc=np.average(ref_w2_init), scale=np.std(ref_w2_init), size=np.shape(ref_w2_init))
+ctrl_w3_init = np.random.normal(loc=np.average(ref_w3_init), scale=np.std(ref_w3_init), size=np.shape(ref_w3_init))
+
+ctrl_w1 = tf.Variable(ctrl_w1_init, dtype=tf.float32)
+ctrl_w2 = tf.Variable(ctrl_w2_init, dtype=tf.float32)
+ctrl_w3 = tf.Variable(ctrl_w3_init, dtype=tf.float32)
+
+####################################
+
+w1p_init = np.random.normal(loc=np.average(ref_w1_init), scale=np.std(ref_w1_init), size=np.shape(ref_w1_init))
+w1n_init = np.random.normal(loc=np.average(ref_w1_init), scale=np.std(ref_w1_init), size=np.shape(ref_w1_init))
+w2p_init = np.random.normal(loc=np.average(ref_w2_init), scale=np.std(ref_w2_init), size=np.shape(ref_w2_init))
+w2n_init = np.random.normal(loc=np.average(ref_w2_init), scale=np.std(ref_w2_init), size=np.shape(ref_w2_init))
+w3_init  = np.random.normal(loc=np.average(ref_w3_init), scale=np.std(ref_w3_init), size=np.shape(ref_w3_init))
 
 w1p = tf.Variable(w1p_init, dtype=tf.float32, constraint=lambda x: tf.clip_by_value(x, 0, np.infty))
 w1n = tf.Variable(w1n_init, dtype=tf.float32, constraint=lambda x: tf.clip_by_value(x, 0, np.infty))
@@ -78,6 +90,17 @@ def conv_op_np(x, wp, wn):
 
 ####################################
 
+ref_conv1 = conv_op(x, ref_w1)
+ref_pool1 = tf.nn.avg_pool(ref_conv1, ksize=[1,2,2,1], strides=[1,2,2,1], padding='SAME')
+
+ref_conv2 = conv_op(ref_pool1, ref_w2)
+ref_pool2 = tf.nn.avg_pool(ref_conv2, ksize=[1,2,2,1], strides=[1,2,2,1], padding='SAME')
+
+ref_conv3 = conv_op(ref_pool2, ref_w3)
+ref_pool3 = tf.nn.avg_pool(ref_conv3, ksize=[1,2,2,1], strides=[1,2,2,1], padding='SAME')
+
+####################################
+
 conv1 = conv_op_np(x, w1p, w1n)
 pool1 = tf.nn.avg_pool(conv1, ksize=[1,2,2,1], strides=[1,2,2,1], padding='SAME')
 
@@ -87,25 +110,28 @@ pool2 = tf.nn.avg_pool(conv2, ksize=[1,2,2,1], strides=[1,2,2,1], padding='SAME'
 conv3 = tf.nn.relu(tf.nn.conv2d(pool2, w3, [1,1,1,1], 'SAME'))
 pool3 = tf.nn.avg_pool(conv3, ksize=[1,2,2,1], strides=[1,2,2,1], padding='SAME')
 
-####################################
-
-tconv1 = conv_op(x, tw1)
-tpool1 = tf.nn.avg_pool(tconv1, ksize=[1,2,2,1], strides=[1,2,2,1], padding='SAME')
-
-tconv2 = conv_op(tpool1, tw2)
-tpool2 = tf.nn.avg_pool(tconv2, ksize=[1,2,2,1], strides=[1,2,2,1], padding='SAME')
-
-tconv3 = conv_op(tpool2, tw3)
-tpool3 = tf.nn.avg_pool(tconv3, ksize=[1,2,2,1], strides=[1,2,2,1], padding='SAME')
-
-####################################
-
-loss = tf.losses.mean_squared_error(labels=tpool3, predictions=pool3)
+loss = tf.losses.mean_squared_error(labels=ref_pool3, predictions=pool3)
 params = [w1p, w1n, w2p, w2n, w3]
 grads = tf.gradients(loss, params)
 grads_and_vars = zip(grads, params)
-
 train = tf.train.AdamOptimizer(learning_rate=lr, epsilon=args.eps).apply_gradients(grads_and_vars)
+
+####################################
+
+ctrl_conv1 = conv_op(x, ctrl_w1)
+ctrl_pool1 = tf.nn.avg_pool(ctrl_conv1, ksize=[1,2,2,1], strides=[1,2,2,1], padding='SAME')
+
+ctrl_conv2 = conv_op(ctrl_pool1, ctrl_w2)
+ctrl_pool2 = tf.nn.avg_pool(ctrl_conv2, ksize=[1,2,2,1], strides=[1,2,2,1], padding='SAME')
+
+ctrl_conv3 = conv_op(ctrl_pool2, ctrl_w3)
+ctrl_pool3 = tf.nn.avg_pool(ctrl_conv3, ksize=[1,2,2,1], strides=[1,2,2,1], padding='SAME')
+
+ctrl_loss = tf.losses.mean_squared_error(labels=ref_pool3, predictions=ctrl_pool3)
+ctrl_params = [ctrl_w1, ctrl_w2, ctrl_w3]
+ctrl_grads = tf.gradients(ctrl_loss, ctrl_params)
+ctrl_grads_and_vars = zip(ctrl_grads, ctrl_params)
+ctrl_train = tf.train.AdamOptimizer(learning_rate=lr, epsilon=args.eps).apply_gradients(ctrl_grads_and_vars)
 
 ####################################
 
@@ -115,7 +141,7 @@ tf.global_variables_initializer().run()
 ####################################
 
 random_losses = []
-random_sign_matches = []
+ctrl_random_losses = []
 
 for jj in range(0, 50000, args.batch_size):
     s = jj
@@ -123,19 +149,17 @@ for jj in range(0, 50000, args.batch_size):
     xs = x_train[s:e]
     ys = y_train[s:e]
     
-    [l, o, to] = sess.run([loss, pool3, tpool3], feed_dict={x: xs, y: ys, lr: 0.0})
-    
-    random_sign_match = np.sum(np.sign(o) == np.sign(to)) * 1.0 / np.prod(np.shape(o))
-    random_sign_matches.append(random_sign_match)
+    [l, cl] = sess.run([loss, ctrl_loss], feed_dict={x: xs, y: ys, lr: 0.0})
     
     random_losses.append(l)
+    ctrl_random_losses.append(cl)
 
 ####################################
 
 for ii in range(args.epochs):
     
     losses = []
-    sign_matches = []
+    ctrl_losses = []
     
     for jj in range(0, 50000, args.batch_size):
         s = jj
@@ -143,14 +167,12 @@ for ii in range(args.epochs):
         xs = x_train[s:e]
         ys = y_train[s:e]
         
-        [l, o, to, _] = sess.run([loss, pool3, tpool3, train], feed_dict={x: xs, y: ys, lr: args.lr})
-        
-        sign_match = np.sum(np.sign(o) == np.sign(to)) * 1.0 / np.prod(np.shape(o))
-        sign_matches.append(sign_match)
+        [l, cl, _, _] = sess.run([loss, ctrl_loss, train, ctrl_train], feed_dict={x: xs, y: ys, lr: args.lr})
         
         losses.append(l)
+        ctrl_losses.append(cl)
         
-    print ('loss %f/%f | match %f/%f' % (np.average(losses), np.average(random_losses), np.average(sign_matches), np.average(random_sign_matches)))
+    print ('loss %f/%f | ctrl loss %f/%f' % (np.average(losses), np.average(random_losses), np.average(ctrl_losses), np.average(ctrl_random_losses)))
         
 ####################################
         
