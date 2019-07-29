@@ -1,4 +1,21 @@
 
+import argparse
+import os
+import sys
+
+##############################################
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--epochs', type=int, default=100)
+parser.add_argument('--batch_size', type=int, default=64)
+parser.add_argument('--alpha', type=float, default=1e-2)
+parser.add_argument('--eps', type=float, default=1e-4)
+args = parser.parse_args()
+
+if args.gpu >= 0:
+    os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
+    os.environ["CUDA_VISIBLE_DEVICES"]=str(args.gpu)
+
 import numpy as np
 import tensorflow as tf
 import keras
@@ -20,10 +37,11 @@ y_test = keras.utils.to_categorical(y_test, 10)
 
 x = tf.placeholder(tf.float32, [None, 32 , 32 , 3])
 y = tf.placeholder(tf.float32, [None, 10])
+# lr = tf.placeholder(tf.float32, ())
 
 ####################################
 
-w = np.load('cifar10_weights.npy').item()
+w = np.load('cifar10_weights.npy', allow_pickle=True).item()
 tconv1_weights = w['conv1_weights']
 tconv2_weights = w['conv2_weights']
 tconv3_weights = w['conv3_weights']
@@ -76,21 +94,21 @@ params = [w1, w2, w3]
 grads = tf.gradients(loss, params)
 grads_and_vars = zip(grads, params)
 
-train = tf.train.AdamOptimizer(learning_rate=10., epsilon=1.).apply_gradients(grads_and_vars)
+train = tf.train.AdamOptimizer(learning_rate=args.lr, epsilon=args.eps).apply_gradients(grads_and_vars)
 
 ####################################
 
 sess = tf.InteractiveSession()
 tf.global_variables_initializer().run()
 
-for ii in range(50):
+for ii in range(args.epochs):
     
     losses = []
     sign_matches = []
     
-    for jj in range(0, 50000, 50):
+    for jj in range(0, 50000, args.batch_size):
         s = jj
-        e = jj + 50
+        e = jj + args.batch_size
         xs = x_train[s:e]
         ys = y_train[s:e]
         
