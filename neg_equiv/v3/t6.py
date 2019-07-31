@@ -9,7 +9,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--epochs', type=int, default=50)
 parser.add_argument('--batch_size', type=int, default=50)
 parser.add_argument('--gpu', type=int, default=0)
-parser.add_argument('--lr', type=float, default=1e-2)
+parser.add_argument('--lr', type=float, default=1e-3)
 parser.add_argument('--eps', type=float, default=1e-6)
 args = parser.parse_args()
 
@@ -43,8 +43,8 @@ lr = tf.placeholder(tf.float32, ())
 ####################################
 
 w = np.load('cifar10_weights.npy', allow_pickle=True).item()
-ref_w1_init = w['conv1_weights']
-ref_w2_init = w['conv2_weights']
+ref_w1_init = w['conv1_weights'][:, :, :,   0:8]
+ref_w2_init = w['conv2_weights'][:, :, 0:8, 0:16]
 
 ref_w1 = tf.Variable(ref_w1_init, dtype=tf.float32)
 ref_w2 = tf.Variable(ref_w2_init, dtype=tf.float32)
