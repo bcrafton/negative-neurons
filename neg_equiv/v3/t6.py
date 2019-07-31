@@ -45,35 +45,29 @@ lr = tf.placeholder(tf.float32, ())
 w = np.load('cifar10_weights.npy', allow_pickle=True).item()
 ref_w1_init = w['conv1_weights']
 ref_w2_init = w['conv2_weights']
-ref_w3_init = w['conv3_weights']
 
 ref_w1 = tf.Variable(ref_w1_init, dtype=tf.float32)
 ref_w2 = tf.Variable(ref_w2_init, dtype=tf.float32)
-ref_w3 = tf.Variable(ref_w3_init, dtype=tf.float32)
 
 ####################################
 
 ctrl_w1_init = np.random.normal(loc=np.average(ref_w1_init), scale=np.std(ref_w1_init), size=np.shape(ref_w1_init))
 ctrl_w2_init = np.random.normal(loc=np.average(ref_w2_init), scale=np.std(ref_w2_init), size=np.shape(ref_w2_init))
-ctrl_w3_init = np.random.normal(loc=np.average(ref_w3_init), scale=np.std(ref_w3_init), size=np.shape(ref_w3_init))
 
 ctrl_w1 = tf.Variable(ctrl_w1_init, dtype=tf.float32)
 ctrl_w2 = tf.Variable(ctrl_w2_init, dtype=tf.float32)
-ctrl_w3 = tf.Variable(ctrl_w3_init, dtype=tf.float32)
 
 ####################################
 
-w1p_init = np.random.normal(loc=np.average(ref_w1_init), scale=np.std(ref_w1_init), size=np.shape(ref_w1_init))
-w1n_init = np.random.normal(loc=np.average(ref_w1_init), scale=np.std(ref_w1_init), size=np.shape(ref_w1_init))
-w2p_init = np.random.normal(loc=np.average(ref_w2_init), scale=np.std(ref_w2_init), size=np.shape(ref_w2_init))
-w2n_init = np.random.normal(loc=np.average(ref_w2_init), scale=np.std(ref_w2_init), size=np.shape(ref_w2_init))
-w3_init  = np.random.normal(loc=np.average(ref_w3_init), scale=np.std(ref_w3_init), size=np.shape(ref_w3_init))
+w1p_init = np.absolute(np.random.normal(loc=np.average(ref_w1_init), scale=np.std(ref_w1_init), size=np.shape(ref_w1_init)))
+w1n_init = np.absolute(np.random.normal(loc=np.average(ref_w1_init), scale=np.std(ref_w1_init), size=np.shape(ref_w1_init)))
+w2p_init = np.absolute(np.random.normal(loc=np.average(ref_w2_init), scale=np.std(ref_w2_init), size=np.shape(ref_w2_init)))
+w2n_init = np.absolute(np.random.normal(loc=np.average(ref_w2_init), scale=np.std(ref_w2_init), size=np.shape(ref_w2_init)))
 
 w1p = tf.Variable(w1p_init, dtype=tf.float32, constraint=lambda x: tf.clip_by_value(x, 0, np.infty))
 w1n = tf.Variable(w1n_init, dtype=tf.float32, constraint=lambda x: tf.clip_by_value(x, 0, np.infty))
 w2p = tf.Variable(w2p_init, dtype=tf.float32, constraint=lambda x: tf.clip_by_value(x, 0, np.infty))
 w2n = tf.Variable(w2n_init, dtype=tf.float32, constraint=lambda x: tf.clip_by_value(x, 0, np.infty))
-w3  = tf.Variable(w3_init,  dtype=tf.float32, constraint=lambda x: tf.clip_by_value(x, 0, np.infty))
 
 ####################################
 
@@ -83,9 +77,9 @@ def conv_op(x, w):
     return conv
     
 def conv_op_np(x, wp, wn):
-    convp = conv_op(x, wp)
-    convn = conv_op(x, wn)
-    conv  = tf.nn.relu(convp) - tf.nn.relu(convn)
+    convp = tf.nn.conv2d(x, wp, [1,1,1,1], 'SAME')
+    convn = tf.nn.conv2d(x, wn, [1,1,1,1], 'SAME')
+    conv  = tf.nn.relu(convp - convn)
     return conv
 
 ####################################
@@ -96,9 +90,6 @@ ref_pool1 = tf.nn.avg_pool(ref_conv1, ksize=[1,2,2,1], strides=[1,2,2,1], paddin
 ref_conv2 = conv_op(ref_pool1, ref_w2)
 ref_pool2 = tf.nn.avg_pool(ref_conv2, ksize=[1,2,2,1], strides=[1,2,2,1], padding='SAME')
 
-ref_conv3 = conv_op(ref_pool2, ref_w3)
-ref_pool3 = tf.nn.avg_pool(ref_conv3, ksize=[1,2,2,1], strides=[1,2,2,1], padding='SAME')
-
 ####################################
 
 conv1 = conv_op_np(x, w1p, w1n)
@@ -107,11 +98,8 @@ pool1 = tf.nn.avg_pool(conv1, ksize=[1,2,2,1], strides=[1,2,2,1], padding='SAME'
 conv2 = conv_op_np(pool1, w2p, w2n)
 pool2 = tf.nn.avg_pool(conv2, ksize=[1,2,2,1], strides=[1,2,2,1], padding='SAME')
 
-conv3 = tf.nn.relu(tf.nn.conv2d(pool2, w3, [1,1,1,1], 'SAME'))
-pool3 = tf.nn.avg_pool(conv3, ksize=[1,2,2,1], strides=[1,2,2,1], padding='SAME')
-
-loss = tf.losses.mean_squared_error(labels=ref_pool3, predictions=pool3)
-params = [w1p, w1n, w2p, w2n, w3]
+loss = tf.losses.mean_squared_error(labels=ref_pool2, predictions=pool2)
+params = [w1p, w1n, w2p, w2n]
 grads = tf.gradients(loss, params)
 grads_and_vars = zip(grads, params)
 train = tf.train.AdamOptimizer(learning_rate=lr, epsilon=args.eps).apply_gradients(grads_and_vars)
@@ -124,11 +112,8 @@ ctrl_pool1 = tf.nn.avg_pool(ctrl_conv1, ksize=[1,2,2,1], strides=[1,2,2,1], padd
 ctrl_conv2 = conv_op(ctrl_pool1, ctrl_w2)
 ctrl_pool2 = tf.nn.avg_pool(ctrl_conv2, ksize=[1,2,2,1], strides=[1,2,2,1], padding='SAME')
 
-ctrl_conv3 = conv_op(ctrl_pool2, ctrl_w3)
-ctrl_pool3 = tf.nn.avg_pool(ctrl_conv3, ksize=[1,2,2,1], strides=[1,2,2,1], padding='SAME')
-
-ctrl_loss = tf.losses.mean_squared_error(labels=ref_pool3, predictions=ctrl_pool3)
-ctrl_params = [ctrl_w1, ctrl_w2, ctrl_w3]
+ctrl_loss = tf.losses.mean_squared_error(labels=ref_pool2, predictions=ctrl_pool2)
+ctrl_params = [ctrl_w1, ctrl_w2]
 ctrl_grads = tf.gradients(ctrl_loss, ctrl_params)
 ctrl_grads_and_vars = zip(ctrl_grads, ctrl_params)
 ctrl_train = tf.train.AdamOptimizer(learning_rate=lr, epsilon=args.eps).apply_gradients(ctrl_grads_and_vars)
