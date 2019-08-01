@@ -59,15 +59,11 @@ ctrl_w2 = tf.Variable(ctrl_w2_init, dtype=tf.float32)
 
 ####################################
 
-w1p_init = np.absolute(np.random.normal(loc=np.average(ref_w1_init), scale=np.std(ref_w1_init), size=np.shape(ref_w1_init)))
-w1n_init = np.absolute(np.random.normal(loc=np.average(ref_w1_init), scale=np.std(ref_w1_init), size=np.shape(ref_w1_init)))
-w2p_init = np.absolute(np.random.normal(loc=np.average(ref_w2_init), scale=np.std(ref_w2_init), size=np.shape(ref_w2_init)))
-w2n_init = np.absolute(np.random.normal(loc=np.average(ref_w2_init), scale=np.std(ref_w2_init), size=np.shape(ref_w2_init)))
+w1_init = np.random.normal(loc=np.average(ref_w1_init), scale=np.std(ref_w1_init), size=[32, 32, 3*3*3, 8])
+w2_init = np.random.normal(loc=np.average(ref_w2_init), scale=np.std(ref_w2_init), size=[16, 16, 3*3*8, 16])
 
-w1p = tf.Variable(w1p_init, dtype=tf.float32, constraint=lambda x: tf.clip_by_value(x, 0, np.infty))
-w1n = tf.Variable(w1n_init, dtype=tf.float32, constraint=lambda x: tf.clip_by_value(x, 0, np.infty))
-w2p = tf.Variable(w2p_init, dtype=tf.float32, constraint=lambda x: tf.clip_by_value(x, 0, np.infty))
-w2n = tf.Variable(w2n_init, dtype=tf.float32, constraint=lambda x: tf.clip_by_value(x, 0, np.infty))
+w1 = tf.Variable(w1_init, dtype=tf.float32)
+w2 = tf.Variable(w2_init, dtype=tf.float32)
 
 ####################################
 
@@ -76,19 +72,15 @@ def conv_op(x, w):
     conv = tf.nn.relu(conv)
     return conv
     
-def conv_op_np(x, wp, wn):
-    convp = tf.nn.conv2d(x, wp, [1,1,1,1], 'SAME')
-    convn = tf.nn.conv2d(x, wn, [1,1,1,1], 'SAME')
+def local_op(x, w):
+    patches = tf.image.extract_image_patches(images=x, ksizes=[1,3,3,1], strides=[1,1,1,1], padding='SAME', rates=[1,1,1,1])
+    patches = tf.transpose(patches, [1, 2, 0, 3])
     
-    # this is useless ... we need negative outputs.
-    # conv  = tf.nn.relu(convp - tf.nn.relu(convn))
+    local   = tf.keras.backend.batch_dot(patches, w)
+    local   = tf.transpose(local, [2, 0, 1, 3])
     
-    # and this is retarded, we would have another set of weights and activation ... would not just subtract these
-    # conv  = tf.nn.relu(convp) - tf.nn.relu(convn)
-    
-    assert(False)
-    
-    return conv
+    local   = tf.nn.relu(local)
+    return local
 
 ####################################
 
@@ -100,14 +92,14 @@ ref_pool2 = tf.nn.avg_pool(ref_conv2, ksize=[1,2,2,1], strides=[1,2,2,1], paddin
 
 ####################################
 
-conv1 = conv_op_np(x, w1p, w1n)
+conv1 = local_op(x, w1)
 pool1 = tf.nn.avg_pool(conv1, ksize=[1,2,2,1], strides=[1,2,2,1], padding='SAME')
 
-conv2 = conv_op_np(pool1, w2p, w2n)
+conv2 = local_op(pool1, w2)
 pool2 = tf.nn.avg_pool(conv2, ksize=[1,2,2,1], strides=[1,2,2,1], padding='SAME')
 
 loss = tf.losses.mean_squared_error(labels=ref_pool2, predictions=pool2)
-params = [w1p, w1n, w2p, w2n]
+params = [w1, w2]
 grads = tf.gradients(loss, params)
 grads_and_vars = zip(grads, params)
 train = tf.train.AdamOptimizer(learning_rate=lr, epsilon=args.eps).apply_gradients(grads_and_vars)
